@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered Resume Analyzer - Intelligent skill matching and candidate ranking">
+    <title>AI Resume Analyzer - Professional Resume Analysis</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        
+        <!-- SIDEBAR SETTINGS PANEL -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+                <p class="sidebar-subtitle">Configure analysis parameters</p>
+            </div>
+            
+            <!-- Sensitivity Setting -->
+            <div class="sidebar-section">
+                <h3>🎯 Matching Sensitivity</h3>
+                <p class="setting-description">Adjust how strictly skills are matched</p>
+                <input type="range" id="sensitivitySlider" min="0.3" max="0.9" step="0.1" value="0.5">
+                <div class="sensitivity-labels">
+                    <span>Lenient</span>
+                    <span id="sensitivityValue" class="sensitivity-display">0.50</span>
+                    <span>Strict</span>
+                </div>
+            </div>
+
+            <!-- Strict Mode Toggle -->
+            <div class="sidebar-section">
+                <h3>🔍 Matching Mode</h3>
+                <p class="setting-description">How skills are identified in resumes</p>
+                <div class="toggle-group">
+                    <label class="toggle-option" id="flexibleModeLabel">
+                        <input type="radio" name="matchMode" value="flexible" checked onchange="updateMatchMode(this)">
+                        <span class="toggle-btn">
+                            <i class="fas fa-brain"></i> Flexible
+                        </span>
+                    </label>
+                    <label class="toggle-option" id="strictModeLabel">
+                        <input type="radio" name="matchMode" value="strict" onchange="updateMatchMode(this)">
+                        <span class="toggle-btn">
+                            <i class="fas fa-bullseye"></i> Strict
+                        </span>
+                    </label>
+                </div>
+                <p class="help-text" id="matchModeHelp">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="matchModeHelpText">Flexible: finds related skills (e.g. Kotlin ≈ Java)</span>
+                </p>
+            </div>
+
+            <!-- Job Description Section -->
+            <div class="sidebar-section">
+                <h3><i class="fas fa-briefcase"></i> Required Skills</h3>
+                <p class="setting-description">Enter one skill per line</p>
+                <textarea 
+                    id="jobDescription" 
+                    class="job-textarea" 
+                    placeholder="Python&#10;React.js&#10;AWS&#10;Machine Learning&#10;Docker&#10;PostgreSQL&#10;..."
+                    spellcheck="true"
+                    oninput="renderWeightSliders()"></textarea>
+                <p class="help-text">
+                    <i class="fas fa-lightbulb"></i>
+                    Be specific! Use skill names that appear in resumes.
+                </p>
+            </div>
+
+            <!-- Skill Weighting -->
+            <div class="sidebar-section" id="weightingSection" style="display:none;">
+                <h3>⚖️ Skill Importance</h3>
+                <p class="setting-description">Set how important each skill is (1x–5x)</p>
+                <div id="skillWeightSliders"></div>
+                <p class="help-text">
+                    <i class="fas fa-info-circle"></i>
+                    Higher weight = more impact on weighted score.
+                </p>
+            </div>
+
+            <!-- API Key -->
+            <div class="sidebar-section">
+                <h3>🔑 API Key <span class="badge-optional">Optional</span></h3>
+                <p class="setting-description">Use your own Groq API key</p>
+                <div class="api-key-field">
+                    <input 
+                        type="password" 
+                        id="apiKeyInput" 
+                        placeholder="gsk_xxxxxxxxxxxxxxxx"
+                        autocomplete="off"
+                    >
+                    <button class="btn-eye" onclick="toggleApiKeyVisibility()" title="Show/Hide key">
+                        <i class="fas fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+                <p class="help-text">
+                    <i class="fas fa-lock"></i>
+                    Key is used only for this session, never stored.
+                </p>
+            </div>
+
+            <!-- Info Box -->
+            <div class="info-box">
+                <h4><i class="fas fa-circle-info"></i> Pro Tip</h4>
+                <p>Give critical skills (Python, AWS) a 5x weight to make them count more in ranking.</p>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            
+            <!-- HEADER BANNER -->
+            <div class="purple-banner">
+                <div class="banner-content">
+                    <h1><i class="fas fa-robot"></i> AI Resume Analyzer</h1>
+                    <p>Upload resumes • AI-powered skill matching • Get instant candidate rankings</p>
+                </div>
+            </div>
+
+            <!-- UPLOAD SECTION -->
+            <section class="section">
+                <h3 class="section-title"><i class="fas fa-upload"></i> Upload Resumes</h3>
+                <p class="section-description">Upload multiple PDF files for batch analysis</p>
+                
+                <div id="dropZone" class="drop-zone">
+                    <i class="fas fa-file-pdf drop-zone-icon"></i>
+                    <h4>Click to select or drag PDF files here</h4>
+                    <p class="drop-zone-hint">Supported format: PDF (max 10MB each)</p>
+                    <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;">
+                </div>
+                
+                <!-- File Status -->
+                <div id="fileStatusContainer" class="status-container" style="display: none;">
+                    <div class="status-content">
+                        <i class="fas fa-check-circle status-icon"></i>
+                        <div>
+                            <p id="fileStatus">✅ 0 resume(s) ready</p>
+                            <p class="status-info" id="fileInfo"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Analyze Button -->
+                <button id="analyzeBtn" class="btn-analyze" disabled>
+                    <i class="fas fa-play"></i> Analyze Resumes
+                </button>
+                
+                <!-- Loading Spinner -->
+                <div id="loadingSpinner" class="spinner" style="display: none;">
+                    <div class="spin"></div>
+                    <p id="loadingText">Analyzing resumes with AI...</p>
+                    <p class="loading-subtext">This may take a moment depending on file size</p>
+                </div>
+            </section>
+
+            <!-- RESULTS SECTION -->
+            <section id="resultsSection" class="results-section" style="display: none;">
+                
+                <!-- Export Bar -->
+                <div class="export-bar">
+                    <span class="export-label"><i class="fas fa-download"></i> Export Results:</span>
+                    <button class="btn-export btn-csv" onclick="exportCSV()">
+                        <i class="fas fa-file-csv"></i> CSV
+                    </button>
+                    <button class="btn-export btn-json" onclick="exportJSON()">
+                        <i class="fas fa-file-code"></i> JSON
+                    </button>
+                    <button class="btn-export btn-pdf-export" onclick="exportPDF()">
+                        <i class="fas fa-file-pdf"></i> Print / PDF
+                    </button>
+                </div>
+                
+                <!-- Overview Stats -->
+                <h3 class="section-title"><i class="fas fa-chart-line"></i> Analysis Overview</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-file"></i></div>
+                        <h2 id="totalAnalyzed">0</h2>
+                        <p>RESUMES ANALYZED</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-star"></i></div>
+                        <h2 id="bestScore">0/15</h2>
+                        <p id="bestName">BEST CANDIDATE</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-percent"></i></div>
+                        <h2 id="avgScore">0%</h2>
+                        <p>AVERAGE MATCH</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-trophy"></i></div>
+                        <h2 id="topSkill">-</h2>
+                        <p>TOP SKILL</p>
+                    </div>
+                </div>
+
+                <!-- Best Candidate Banner -->
+                <div id="bestCandidateBanner" class="best-candidate-banner">
+                    <div class="banner-badge"><i class="fas fa-crown"></i> TOP CANDIDATE</div>
+                    <h3 id="bestCandidateTitle">Best Candidate Name</h3>
+                    <p id="bestCandidateSubtitle">0 skills matched | 0% match score</p>
+                </div>
+
+                <!-- Candidate Comparison Chart -->
+                <h3 class="section-title"><i class="fas fa-chart-bar"></i> Candidate Comparison</h3>
+                <div class="chart-container">
+                    <canvas id="barChart"></canvas>
+                </div>
+
+                <!-- Skills Radar Chart -->
+                <h3 class="section-title"><i class="fas fa-radar"></i> Skills Radar Analysis</h3>
+                <p class="section-description">Visual comparison of candidate skills across all requirements</p>
+                <div class="chart-container" style="display: flex; justify-content: center;">
+                    <div style="width: 100%; max-width: 600px;">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Skills Comparison Table -->
+                <h3 class="section-title"><i class="fas fa-table"></i> Detailed Skills Matrix</h3>
+                <p class="section-description">Detailed breakdown of matched and missing skills for each candidate</p>
+                <div class="table-container">
+                    <table class="skills-table">
+                        <thead id="tableHead">
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+
+            </section>
+            
+            <!-- ERROR MESSAGE -->
+            <div id="errorMessage" class="error-message" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorText"></span>
+                <button class="error-close" onclick="closeError()">✕</button>
+            </div>
+
+            <!-- FOOTER -->
+            <footer class="footer">
+                <p>AI Resume Analyzer v2.0 | <a href="#" onclick="return false;">Privacy Policy</a> | <a href="#" onclick="return false;">Contact Support</a></p>
+            </footer>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
