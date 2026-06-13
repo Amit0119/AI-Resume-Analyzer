@@ -1,14 +1,9 @@
-fastapi
-uvicorn[standard]
-pydantic
-pydantic-settings
-python-multipart
-python-dotenv
+echo "fastapi==0.104.1
+uvicorn==0.24.0
+gunicorn==21.2.0
 PyPDF2==3.0.1
-sentence-transformers
-torch
-numpy
-scipy
-scikit-learn
-pandas
-gunicorn
+pydantic==2.5.0
+python-multipart==0.0.6
+python-dotenv==1.0.0
+aiofiles==23.2.1
+groq==0.4.1" > requirements.txt
